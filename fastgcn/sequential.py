@@ -79,7 +79,7 @@ class Sequential(object):
         self.weighted_metrics = weighted_metrics
         self.input_shape = self.layers[0].input_shape
         self.inputs = tf.placeholder(shape=[None,self.input_shape[1]], name="inputs", dtype=tf.float32)
-        self.support = tf.placeholder(shape=[50, 6], name="support", dtype=tf.float32)
+        self.support = tf.placeholder(shape=[None, self.sample_num], name="support", dtype=tf.float32)
 
         self.activations.append(self.inputs)
         for layer in self.layers:
@@ -99,7 +99,7 @@ class Sequential(object):
             raise ValueError
 
         if optimizer == None:
-            self.optimizer = tf.train.AdamOptimizer(learning_rate=0.1)
+            self.optimizer = tf.train.AdamOptimizer(learning_rate=0.0001)
         else:
             self.optimizer = optimizer
         for metric in metrics:
@@ -113,7 +113,6 @@ class Sequential(object):
             y=None,
             batch_size=None,
             epochs=1,
-            sample_num = 20,
             verbose=1,
             callbacks=None,
             validation_split=0.,
@@ -139,18 +138,15 @@ class Sequential(object):
                 batches = minibatches([adjacent_matrix_train, labels], batchsize=batch_size, shuffle=True)
                 for batch in batches:
                     [adjacent_matrix_train_batch, labels_train_batch] = batch
-                    if sample_num is None:
+                    if self.sample_num is None:
                         #for sparse matrix
                         pass
                     else:
                         nonzero_in_degree_vector = np.nonzero(np.sum(adjacent_matrix_train_batch, axis=0))[0]
-                        if sample_num > len(nonzero_in_degree_vector):
-                            q1 = nonzero_in_degree_vector
-                        else:
-                            q1 = np.random.choice(nonzero_in_degree_vector, sample_num, replace=False, p=p0[nonzero_in_degree_vector] / sum(p0[nonzero_in_degree_vector]))  # top layer
-                        support1 = np.dot(adjacent_matrix_train_batch[:, q1],np.eye(q1.shape[0])*(1.0 / (p0[q1] * sample_num)))
+                        assert self.sample_num <= len(nonzero_in_degree_vector),"Invaild sample num"
+                        q1 = np.random.choice(nonzero_in_degree_vector, self.sample_num, replace=False, p=p0[nonzero_in_degree_vector] / sum(p0[nonzero_in_degree_vector]))  # top layer
+                        support1 = np.dot(adjacent_matrix_train_batch[:, q1],np.eye(q1.shape[0])*(1.0 / (p0[q1] * self.sample_num)))
                         inputs_batch = inputs[q1,:]
-                        print(labels_train_batch.shape,inputs_batch.shape)
                     _,loss,accuracy = session.run([self.train_step, self.loss, self.accuracy], feed_dict={self.inputs:inputs_batch,self.labels:labels_train_batch,self.support:support1})
                     print("%s %s(%s seconds)" % (datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                                                     "epoch " + str(epoch)

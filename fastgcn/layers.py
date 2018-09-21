@@ -58,10 +58,6 @@ class Layer(object):
         outputs = self._call(inputs,support)
         return outputs
 
-class Dense(Layer):
-    def __init__(self,dropout=0.,**kwargs):
-        super(Dense,self).__init__(**kwargs)
-
 class GraphConvolution(Layer):
     def __init__(self,
                  output_dim,
@@ -103,7 +99,7 @@ class GraphConvolution(Layer):
             if self.bias:
                 self.vars['bias'] = zeros([output_dim], name='bias')
 
-    def _call(self, inputs,support):
+    def _call(self,inputs,support):
         x = inputs
         if self.sparse_inputs:
             x = sparse_dropout(x, 1 - self.dropout, self.num_features_nonzero)
@@ -111,6 +107,7 @@ class GraphConvolution(Layer):
             x = tf.nn.dropout(x, 1 - self.dropout)
 
         if not self.featureless:
+            print(x.shape,self.vars["weights_0"].shape)
             pre_support = dot(x, self.vars['weights_0'],sparse=self.sparse_inputs)
         else:
             pre_support = self.vars['weights_0']
@@ -120,4 +117,50 @@ class GraphConvolution(Layer):
         if self.bias:
             output += self.vars['bias']
 
+        return self.activation(output)
+
+class Dense(Layer):
+    def __init__(self,
+                 output_dim,
+                 placeholders,
+                 dropout=0.,
+                 sparse_inputs=False,
+                 activation=tf.nn.relu,
+                 bias=False,
+                 featureless=False,
+                 **kwargs):
+        super(Dense,self).__init__(**kwargs)
+
+        if dropout:
+            self.dropout = placeholders['dropout']
+        else:
+            self.dropout = 0.
+
+        self.activation = activation
+        self.input_dim = self.input_shape[1]
+        self.sparse_inputs = sparse_inputs
+        self.featureless = featureless
+        self.bias = bias
+
+        if sparse_inputs:
+            self.num_features_nonzero = placeholders['num_features_nonzero']
+
+        self.vars = {}
+        with tf.variable_scope(self.name + '_vars'):
+            self.vars['weights'] = glorot([self.input_dim,output_dim],name='weights')
+            if self.bias:
+                self.vars['bias'] = zeros([output_dim], name='bias')
+
+    def _call(self,inputs,support):
+        x = inputs
+
+        if self.sparse_inputs:
+            x = sparse_dropout(x, 1 - self.dropout, self.num_features_nonzero)
+        else:
+            x = tf.nn.dropout(x, 1 - self.dropout)
+
+        output = dot(x,self.vars['weights'],sparse=self.sparse_inputs)
+
+        if self.bias:
+            output += self.vars['bias']
         return self.activation(output)
