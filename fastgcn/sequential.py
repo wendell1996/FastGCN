@@ -90,7 +90,7 @@ class Sequential(object):
 
         if loss == None:
             self._loss()
-        elif loss == "masked_softmax_cross_entropy":
+        elif loss == "softmax_cross_entropy":
             self._loss()
         else:
             raise ValueError
@@ -119,32 +119,32 @@ class Sequential(object):
         adjacent_matrix_train = self.placeholders["support"]
         assert np.sum(adjacent_matrix_train)
         p0 = np.sum(adjacent_matrix_train,axis=0) / np.sum(adjacent_matrix_train)
-        with tf.Session() as self.session:
-            self.session.run(tf.global_variables_initializer())
-            for epoch in range(self.epochs):
-                n = 0
-                start = time.time()
-                batches = minibatches([adjacent_matrix_train, labels], batchsize=batch_size, shuffle=True)
-                for batch in batches:
-                    [adjacent_matrix_train_batch, labels_train_batch] = batch
-                    if self.rank is None:
-                        #for sparse matrix
-                        pass
-                    else:
-                        nonzero_in_degree_vector = np.nonzero(np.sum(adjacent_matrix_train_batch, axis=0))[0]
-                        if self.rank > len(nonzero_in_degree_vector):
-                            self.rank = len(nonzero_in_degree_vector)
-                        q1 = np.random.choice(nonzero_in_degree_vector, self.rank, replace=False, p=p0[nonzero_in_degree_vector] / sum(p0[nonzero_in_degree_vector]))  # top layer
-                        support1 = np.dot(adjacent_matrix_train_batch[:, q1],np.eye(q1.shape[0])*(1.0 / (p0[q1] * self.rank)))
-                        inputs_batch = inputs[q1,:]
-                    _,loss,accuracy = self.session.run([self.train_step, self.loss, self.accuracy], feed_dict={self.inputs:inputs_batch,self.labels:labels_train_batch,self.support:support1})
-                    print("%s %s(%s seconds)" % (datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                                                    "epoch " + str(epoch)
-                                                    + " |batch " + str(n)
-                                                    + " |loss " + str(loss)
-                                                    + " |accuracy " + str(accuracy),
-                                                    round(time.time() - start, 3)))
-                    n = n + 1
+        self.session = tf.Session()
+        self.session.run(tf.global_variables_initializer())
+        for epoch in range(self.epochs):
+            n = 0
+            start = time.time()
+            batches = minibatches([adjacent_matrix_train, labels], batchsize=batch_size, shuffle=True)
+            for batch in batches:
+                [adjacent_matrix_train_batch, labels_train_batch] = batch
+                if self.rank is None:
+                    #for sparse matrix
+                    pass
+                else:
+                    nonzero_in_degree_vector = np.nonzero(np.sum(adjacent_matrix_train_batch, axis=0))[0]
+                    if self.rank > len(nonzero_in_degree_vector):
+                        self.rank = len(nonzero_in_degree_vector)
+                    q1 = np.random.choice(nonzero_in_degree_vector, self.rank, replace=False, p=p0[nonzero_in_degree_vector] / sum(p0[nonzero_in_degree_vector]))  # top layer
+                    support1 = np.dot(adjacent_matrix_train_batch[:, q1],np.eye(q1.shape[0])*(1.0 / (p0[q1] * self.rank)))
+                    inputs_batch = inputs[q1,:]
+                _,loss,accuracy = self.session.run([self.train_step, self.loss, self.accuracy], feed_dict={self.inputs:inputs_batch,self.labels:labels_train_batch,self.support:support1})
+                print("%s %s(%s seconds)" % (datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                                                "epoch " + str(epoch + 1)
+                                                + " |batch " + str(n + 1)
+                                                + " |loss " + str(loss)
+                                                + " |accuracy " + str(accuracy),
+                                                round(time.time() - start, 3)))
+                n = n + 1
 
     def evaluate(self,
                  x=None,
@@ -155,6 +155,6 @@ class Sequential(object):
                                         feed_dict={self.inputs: x, self.labels: y,
                                                    self.support: placeholders.get("support")})
         print("%s %s(%s seconds)" % (datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                                     + " |loss " + str(loss)
+                                     " |loss " + str(loss)
                                      + " |accuracy " + str(accuracy),
                                      round(time.time() - start, 3)))

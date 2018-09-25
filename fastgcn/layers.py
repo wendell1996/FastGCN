@@ -61,7 +61,7 @@ class Layer(object):
 class GraphConvolution(Layer):
     def __init__(self,
                  output_dim,
-                 placeholders,
+                 placeholders=None,
                  sparse_inputs=False,
                  bias=False,
                  featureless=False,
@@ -121,7 +121,7 @@ class GraphConvolution(Layer):
 class Dense(Layer):
     def __init__(self,
                  output_dim,
-                 placeholders,
+                 placeholders=None,
                  dropout=0.,
                  sparse_inputs=False,
                  activation=tf.nn.relu,
