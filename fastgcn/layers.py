@@ -62,7 +62,6 @@ class GraphConvolution(Layer):
     def __init__(self,
                  output_dim,
                  placeholders,
-                 support=None,
                  sparse_inputs=False,
                  bias=False,
                  featureless=False,
@@ -86,28 +85,28 @@ class GraphConvolution(Layer):
         self.featureless = featureless
         self.bias = bias
         self.output_dim = output_dim[0]
-        self.input_dim = self.input_shape[1]
+        self.input_dim = None
 
         # helper variable for sparse dropout
         if sparse_inputs:
             self.num_features_nonzero = placeholders['num_features_nonzero']
 
         self.vars = {}
+
+    def _call(self,inputs,support):
+        x = inputs
+        self.input_dim = x.shape.as_list()[1]
         with tf.variable_scope(self.name + '_vars'):
             for i in range(1):
                 self.vars['weights_' + str(i)] = glorot([self.input_dim, self.output_dim],name='weights_' + str(i))
             if self.bias:
-                self.vars['bias'] = zeros([output_dim], name='bias')
-
-    def _call(self,inputs,support):
-        x = inputs
+                self.vars['bias'] = zeros([self.output_dim], name='bias')
         if self.sparse_inputs:
             x = sparse_dropout(x, 1 - self.dropout, self.num_features_nonzero)
         else:
             x = tf.nn.dropout(x, 1 - self.dropout)
 
         if not self.featureless:
-            print(x.shape,self.vars["weights_0"].shape)
             pre_support = dot(x, self.vars['weights_0'],sparse=self.sparse_inputs)
         else:
             pre_support = self.vars['weights_0']
