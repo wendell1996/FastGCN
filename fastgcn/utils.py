@@ -14,6 +14,13 @@ def run_time_record(logging):
         return inner
     return _run_time_record
 
+def construct_feed_dict(inputs,labels,supports,placeholders,len):
+    feed_dict = dict()
+    feed_dict.update({placeholders['inputs']: inputs})
+    feed_dict.update({placeholders['labels']: labels})
+    feed_dict.update({placeholders['supports'][i]: supports[i] for i in range(len)})
+    return feed_dict
+
 class DataProcessor(object):
     def __init__(self,**kwargs):
         self._load_data(**kwargs)

@@ -69,7 +69,6 @@ class GraphConvolution(Layer):
                  dropout=0.,
                  **kwargs):
         super(GraphConvolution, self).__init__(**kwargs)
-
         self.placeholders = placeholders
 
         if dropout:
@@ -150,7 +149,7 @@ class Dense(Layer):
             if self.bias:
                 self.vars['bias'] = zeros([output_dim], name='bias')
 
-    def _call(self,inputs,support):
+    def _call(self,inputs,support=None):
         x = inputs
 
         if self.sparse_inputs:
